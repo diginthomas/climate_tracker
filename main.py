@@ -1,7 +1,10 @@
 from fastapi import FastAPI
+from controllers import home_controller, auth_controller
 
 app = FastAPI()
 
-@app.get("/")
-def read_root():
-    return {"Hello": "World"}
+prefix = "/api/climate"
+
+# Include routers with prefix
+app.include_router(home_controller.router, prefix=prefix)
+app.include_router(auth_controller.router, prefix=prefix)

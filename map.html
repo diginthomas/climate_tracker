@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Regions of British Columbia</title>
+
+  <!-- ✅ Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    body {
+      text-align: center;
+      background: #f8f9fa;
+    }
+    .map-container {
+      position: relative;
+      display: inline-block;
+      width: 90%;
+      max-width: 800px;
+    }
+    .map-img {
+      width: 100%;
+      height: auto;
+      border: 2px solid #ccc;
+      border-radius: 8px;
+    }
+    .region-btn {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 4px 10px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 0.9rem;
+      transform: translate(-50%, -50%);
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+
+  <h2 class="my-3">Regions of British Columbia</h2>
+  <div class="map-container">
+    <!-- Make sure this image file is in the same folder as the HTML -->
+    <img src="WhatsApp Image 2025-09-24 at 13.32.40_4e221840.jpg" alt="BC Map" class="map-img" id="bcMap">
+
+    <!-- Buttons (positioned using percentage for responsiveness) -->
+    <button class="region-btn btn btn-light" style="top:20%; left:50%;" data-region="Northern BC">Northern BC</button>
+    <button class="region-btn btn btn-light" style="top:55%; left:75%;" data-region="Kootenay/Columbia">Kootenay/Columbia</button>
+    <button class="region-btn btn btn-light" style="top:65%; left:55%;" data-region="Thompson-Okanagan">Thompson-Okanagan</button>
+    <button class="region-btn btn btn-light" style="top:70%; left:30%;" data-region="Lower Mainland">Lower Mainland</button>
+    <button class="region-btn btn btn-light" style="top:80%; left:20%;" data-region="Vancouver Island & Coast">Vancouver Island & Coast</button>
+  </div>
+
+  <!-- Bootstrap Modal -->
+  <div class="modal fade" id="regionModal" tabindex="-1" aria-labelledby="regionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="regionModalLabel">Region</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="regionName">
+          <!-- Region name will appear here -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ✅ Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    // Get all region buttons
+    const buttons = document.querySelectorAll('.region-btn');
+    const regionModal = new bootstrap.Modal(document.getElementById('regionModal'));
+    const regionName = document.getElementById('regionName');
+    const regionTitle = document.getElementById('regionModalLabel');
+
+    // Add click event to each button
+    buttons.forEach(button => {
+      button.addEventListener('click', () => {
+        const region = button.getAttribute('data-region');
+        regionName.textContent = "You clicked: " + region;
+        regionTitle.textContent = region;
+        regionModal.show(); // Show Bootstrap modal
+      });
+    });
+  </script>
+</body>
+</html>
