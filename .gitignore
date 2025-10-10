@@ -1,13 +1,20 @@
 # Python cache
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 
-# Virtual environment
+# Virtual environments
 .venv/
+venv/
 
-# IDE files
+# Environment variables
+.env
+
+# IDE / Editor settings
 .idea/
+.vscode/
 
-# OS files
+# Logs and OS files
 *.log
 *.DS_Store
