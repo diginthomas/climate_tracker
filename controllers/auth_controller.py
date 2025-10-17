@@ -7,6 +7,8 @@ from jose import jwt, JWTError
 from dotenv import load_dotenv
 from bson import ObjectId
 
+from email_helper import send_reset_email
+from models.password_request_email import PasswordResetRequest
 from models.user_model import UserRegister, UserLogin, UserResponse
 from database import users_collection
 
@@ -95,4 +97,39 @@ async def login(user: UserLogin):
     access_token = create_access_token(
         {"sub": str(db_user["_id"]), "email": db_user["email"], "role": db_user.get("role", "EndUser")}
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {"access_token": access_token, "token_type": "bearer","user":db_user}
+
+@router.post("/reset_password")
+async def reset_password(request: PasswordResetRequest):
+    user = await users_collection.find_one({"email": request.email})
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    token_data = {
+        "sub": user["email"],
+        "exp": datetime.utcnow() + timedelta(minutes=15)
+    }
+    reset_token = jwt.encode(token_data, SECRET_KEY, algorithm=ALGORITHM)
+
+    # Create reset link (example: frontend route)
+    reset_link = f"http://localhost:5173/reset-password?token={reset_token}"
+    await send_reset_email(request.email, reset_link)
+    return {"message": "Password reset link sent to your email"}
+
+
+@router.post("/update_password")
+async def update_password(data: dict):
+    token = data.get("token")
+    new_password = data.get("new_password")
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email = payload.get("sub")
+        if email is None:
+            raise HTTPException(status_code=400, detail="Invalid token")
+
+        hashed_password = pwd_context.hash(new_password)
+        users_collection.update_one({"email": email}, {"$set": {"password": hashed_password}})
+        return {"message": "Password updated successfully"}
+
+    except JWTError:
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
