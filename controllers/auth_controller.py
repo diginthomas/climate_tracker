@@ -97,7 +97,18 @@ async def login(user: UserLogin):
     access_token = create_access_token(
         {"sub": str(db_user["_id"]), "email": db_user["email"], "role": db_user.get("role", "EndUser")}
     )
-    return {"access_token": access_token, "token_type": "bearer","user":db_user}
+    user_data = {
+        "user_id": str(db_user["_id"]),
+        "email": db_user["email"],
+        "username": db_user.get("username"),
+        "role": db_user.get("role", "EndUser")
+    }
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": user_data
+    }
 
 @router.post("/reset_password")
 async def reset_password(request: PasswordResetRequest):

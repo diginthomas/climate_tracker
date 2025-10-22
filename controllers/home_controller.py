@@ -2,6 +2,6 @@ from fastapi import APIRouter
 
 router = APIRouter()
 
-@router.get("/g")
+@router.get("/")
 def read_root():
     return {"Hello": "Wj"}
