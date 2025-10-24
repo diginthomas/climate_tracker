@@ -34,7 +34,7 @@ async def add_event(
         path = os.path.join(UPLOAD_DIR, filename)
         with open(path, "wb") as f:
             f.write(await image.read())
-        image_urls.append(f"/{path}")
+        image_urls.append(f"/uploads/{filename}")
 
     event_doc = {
         "title": title,
@@ -159,7 +159,7 @@ async def update_event(
         path = os.path.join(UPLOAD_DIR, filename)
         with open(path, "wb") as f:
             f.write(await image.read())
-        image_urls.append(f"/{path}")
+        image_urls.append(f"/uploads/{filename}")
     image_urls = image_urls[:5]
 
     updated_doc = {
