@@ -14,6 +14,7 @@ class Event(BaseModel):
     impact_summary :str
     contact_email:str
     year :int
+    severity :str
     source: Optional[str] = None
     is_featured: Optional[bool] = None
     status: int= 3 #pending
@@ -33,6 +34,7 @@ class EventResponse(BaseModel):
     impact_summary: str
     contact_email: str
     year:int
+    severity: str
     source: Optional[str] = None
     is_featured: Optional[bool] = None
     status: int
