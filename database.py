@@ -8,4 +8,8 @@ load_dotenv()
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
 client = AsyncIOMotorClient(MONGO_URI)
 db = client["climate_db"]
+
+#tables
 users_collection = db["users"]
+categories_collection = db["categories"]
+events_collection = db["events"]
