@@ -2,7 +2,7 @@ from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException
 from models.category import Category, CategoryResponse
 from database import categories_collection
-from auth_utils import get_current_user  # adjust this import based on your folder
+from auth_utils import get_current_user
 from typing import List
 
 router = APIRouter(prefix="/category", tags=["Category"])

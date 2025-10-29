@@ -9,6 +9,11 @@ class Event(BaseModel):
     date: datetime
     uploaded_at: datetime
     uploaded_by: str
+    uploaded_by_user: str
+    location :str
+    impact_summary :str
+    contact_email:str
+    year :int
     source: Optional[str] = None
     is_featured: Optional[bool] = None
     status: int= 3 #pending
@@ -23,7 +28,11 @@ class EventResponse(BaseModel):
     date: datetime
     uploaded_at: datetime
     uploaded_by: str
-    uploaded_by_user :str
+    uploaded_by_user: str
+    location: str
+    impact_summary: str
+    contact_email: str
+    year:int
     source: Optional[str] = None
     is_featured: Optional[bool] = None
     status: int
