@@ -8,14 +8,25 @@ from database import users_collection
 from models.user_model import UserResponse, PatchUserRequest
 
 router = APIRouter(prefix="/user/manage", tags=["user_management"],)
-
-
 @router.get("/", response_model=List[UserResponse], dependencies=[Depends(verify_admin)])
 async def get_non_admin_users():
-    users = list(users_collection.find({"role": {"$ne": "Admin"}}))
+    # Fetch users asynchronously
+    users = await users_collection.find({"role": {"$ne": "Admin"}}).to_list(length=None)
 
-    # Convert MongoDB documents to Pydantic models
-    return [UserResponse(**user, user_id=str(user["_id"])) for user in users]
+    # Map MongoDB docs to Pydantic, fill missing fields with defaults
+    result = []
+    for user in users:
+        result.append(
+            UserResponse(
+                user_id=str(user["_id"]),
+                username=user.get("username", "N/A"),
+                email=user.get("email", ""),
+                role=user.get("role", "User"),
+                status=user.get("status", True),  # default to True if missing
+            )
+        )
+    return result
+
 
 
 @router.patch("/", response_model=UserResponse, dependencies=[Depends(verify_admin)])
