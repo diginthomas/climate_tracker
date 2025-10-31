@@ -5,8 +5,8 @@ import os, uuid
 from typing import Optional, List
 
 from database import events_collection, categories_collection
-from models.event import Event, EventResponse
-from auth_utils import get_current_user  # JWT auth dependency
+from models.event import EventResponse
+from auth.auth_utils import get_current_user  # JWT auth dependency
 
 router = APIRouter(prefix="/event", tags=["event"])
 
@@ -26,6 +26,7 @@ async def add_event(
     impact_summary: str = Form(...),
     contact_email: str = Form(...),
     year: int = Form(...),
+    severity: str = Form(...),
     source: Optional[str] = Form(None),
     is_featured: Optional[bool] = Form(False),
     images: List[UploadFile] = File([]),
@@ -52,6 +53,7 @@ async def add_event(
         "impact_summary": impact_summary,
         "contact_email": contact_email,
         "year": year,
+        "severity": severity,
         "status": 3,  # pending
         "source": source,
         "is_featured": is_featured,
@@ -129,6 +131,7 @@ async def update_event(
     impact_summary: str = Form(...),
     contact_email: str = Form(...),
     year: int = Form(...),
+    severity: str = Form(...),
     source: Optional[str] = Form(None),
     is_featured: Optional[bool] = Form(False),
     images: List[UploadFile] = File([]),
@@ -158,6 +161,7 @@ async def update_event(
         "impact_summary": impact_summary,
         "contact_email": contact_email,
         "year": year,
+        "severity": severity,
         "source": source,
         "is_featured": is_featured,
         "status": event.get("status", 3),
