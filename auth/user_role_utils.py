@@ -33,7 +33,7 @@ async def get_current_user_role(token: str = Depends(oauth2_scheme)):
 
 
 async def verify_admin(role: str = Depends(get_current_user_role)):
-    if role != "admin":
+    if role != "Admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admins only"
