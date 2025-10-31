@@ -6,6 +6,7 @@ class UserRegister(BaseModel):
     username: str
     email: EmailStr
     password: str
+    status:bool = True
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -16,4 +17,9 @@ class UserResponse(BaseModel):
     username: str
     email: EmailStr
     role: str = "EndUser"
+    status: bool
     profile_info: Optional[str] = None
+
+
+class PatchUserRequest(BaseModel):
+    user_id: str
