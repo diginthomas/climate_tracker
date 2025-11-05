@@ -5,8 +5,8 @@ import os, uuid
 from typing import Optional, List
 
 from database import events_collection, categories_collection
-from models.event import Event, EventResponse
-from auth_utils import get_current_user  # JWT auth dependency
+from models.event import EventResponse
+from auth.auth_utils import get_current_user  # JWT auth dependency
 
 router = APIRouter(prefix="/event", tags=["event"])
 

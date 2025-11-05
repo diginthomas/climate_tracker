@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from models.user_model import UserResponse
 from database import users_collection
-from auth_utils import get_current_user
+from auth.auth_utils import get_current_user
 
 router = APIRouter(prefix="/user", tags=["user"])
 

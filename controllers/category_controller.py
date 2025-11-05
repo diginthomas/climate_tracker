@@ -1,8 +1,9 @@
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException
+
+from auth.user_role_utils import verify_admin
 from models.category import Category, CategoryResponse
 from database import categories_collection
-from auth_utils import get_current_user
 from typing import List
 
 router = APIRouter(prefix="/category", tags=["Category"])
@@ -28,8 +29,8 @@ async def all_categories():
 
 
 # ➕ Add category (🔒 protected)
-@router.post("/add", response_model=CategoryResponse)
-async def add_category(category: Category, user_email: str = Depends(get_current_user)):
+@router.post("/add", response_model=CategoryResponse,dependencies=[Depends(verify_admin)])
+async def add_category(category: Category):
     existing = categories_collection.find_one({"title": category.title})
     if existing:
         raise HTTPException(status_code=400, detail="Category already exists")
@@ -59,8 +60,8 @@ async def get_category(category_id: str):
 
 
 # ✏️ Update category (🔒 protected)
-@router.put("/{category_id}", response_model=CategoryResponse)
-async def update_category(category_id: str, updated_data: Category, user_email: str = Depends(get_current_user)):
+@router.put("/{category_id}", response_model=CategoryResponse,dependencies=[Depends(verify_admin)])
+async def update_category(category_id: str, updated_data: Category):
     category = categories_collection.find_one({"_id": ObjectId(category_id)})
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
@@ -79,8 +80,8 @@ async def update_category(category_id: str, updated_data: Category, user_email: 
 
 
 # ❌ Soft delete category (🔒 protected)
-@router.delete("/{category_id}")
-async def delete_category(category_id: str, user_email: str = Depends(get_current_user)):
+@router.delete("/{category_id}",dependencies=[Depends(verify_admin)])
+async def delete_category(category_id: str):
     category = categories_collection.find_one({"_id": ObjectId(category_id)})
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
