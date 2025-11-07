@@ -7,7 +7,7 @@ from database import events_collection
 from config.region_mapping import (
     REGIONAL_DISTRICT_TO_REGION,
     REGION_CENTERS,
-    REGION_CITIES
+    REGION_CITIES, REGION_ID
 )
 from utils.geospatial import GeoJSONRegionMapper
 import os
@@ -642,3 +642,62 @@ async def get_city_climate_data(
     
     # Use the region endpoint logic but filter for city
     return await get_region_climate_data(region=region, current_user=current_user)
+
+
+@router.get("/events")
+async def get_events( region: str = Query(..., description="Region name in British Columbia"),
+    current_user: str = Depends(get_current_user)):
+    region_id = REGION_ID.get(region,"")
+    if not region_id:
+        raise HTTPException(
+            status_code=404,
+        )
+    """
+     Get number of events per category in a specific region.
+     Output format: { "Wildfire": 3, "Flood": 1 }
+     """
+    try:
+        pipeline = [
+            # 1️ Filter events by region
+            {"$match": {"region": region_id}},
+
+            # 2️ Convert string category_id to ObjectId
+            {
+                "$addFields": {
+                    "category_obj_id": {"$toObjectId": "$category_id"}
+                }
+            },
+
+            # 3️ Join with categories collection
+            {
+                "$lookup": {
+                    "from": "categories",  # replace with your MongoDB category collection name
+                    "localField": "category_obj_id",
+                    "foreignField": "_id",
+                    "as": "category"
+                }
+            },
+
+            # 4️ Flatten category array
+            {"$unwind": "$category"},
+
+            # 5️ Group by category title and count events
+            {
+                "$group": {
+                    "_id": "$category.title",
+                    "count": {"$sum": 1}
+                }
+            }
+        ]
+
+        # Run aggregation asynchronously
+        cursor = events_collection.aggregate(pipeline)
+        data = [doc async for doc in cursor]
+
+        # Convert to { "CategoryName": count } dictionary
+        result = {item["_id"]: item["count"] for item in data}
+
+        return result
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
