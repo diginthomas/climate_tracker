@@ -27,6 +27,8 @@ async def add_event(
     contact_email: str = Form(...),
     year: int = Form(...),
     severity: str = Form(...),
+    region: str = Form(...),
+    type: str = Form(...),
     source: Optional[str] = Form(None),
     is_featured: Optional[bool] = Form(False),
     images: List[UploadFile] = File([]),
@@ -54,6 +56,8 @@ async def add_event(
         "contact_email": contact_email,
         "year": year,
         "severity": severity,
+        "region": region,
+        "type": type,
         "status": 3,  # pending
         "source": source,
         "is_featured": is_featured,
@@ -120,7 +124,7 @@ async def get_event(event_id: str, current_user: str = Depends(get_current_user)
 # -------------------
 # UPDATE EVENT
 # -------------------
-@router.put("/{event_id}", response_model=EventResponse)
+@router.post("/{event_id}", response_model=EventResponse)
 async def update_event(
     event_id: str,
     title: str = Form(...),
@@ -132,6 +136,8 @@ async def update_event(
     contact_email: str = Form(...),
     year: int = Form(...),
     severity: str = Form(...),
+    region: str = Form(...),
+    type: str = Form(...),
     source: Optional[str] = Form(None),
     is_featured: Optional[bool] = Form(False),
     images: List[UploadFile] = File([]),
@@ -162,6 +168,8 @@ async def update_event(
         "contact_email": contact_email,
         "year": year,
         "severity": severity,
+        "region": region,
+        "type": type,
         "source": source,
         "is_featured": is_featured,
         "status": event.get("status", 3),
