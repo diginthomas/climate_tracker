@@ -70,3 +70,12 @@ REGION_CITIES = {
     "Kootenay/Columbia": ["Cranbrook", "Nelson", "Castlegar"],
 }
 
+
+
+REGION_ID = {
+    "Northern BC":"100",
+    "Thompson-Okanagan":"101",
+    "Lower Mainland":"102",
+    "Vancouver Island & Coast":"103",
+    "Kootenay/Columbia":"104"
+}
