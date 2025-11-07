@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from controllers import home_controller, auth_controller, test_controller, user_controller, category_controller, \
+from controllers import home_controller, auth_controller, user_controller, category_controller, \
     event_controller, user_mangement_controller, geocoding_controller, climate_controller
 from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI()
@@ -24,7 +24,6 @@ app.add_middleware(
 # Include routers with prefix
 app.include_router(home_controller.router, prefix=prefix)
 app.include_router(auth_controller.router, prefix=prefix)
-app.include_router(test_controller.router, prefix=prefix)
 app.include_router(user_controller.router, prefix=prefix)
 app.include_router(category_controller.router, prefix=prefix)
 app.include_router(event_controller.router, prefix=prefix)
