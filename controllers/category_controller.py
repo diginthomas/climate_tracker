@@ -31,9 +31,9 @@ async def all_categories():
 # ➕ Add category (🔒 protected)
 @router.post("/add", response_model=CategoryResponse,dependencies=[Depends(verify_admin)])
 async def add_category(category: Category):
-    existing = categories_collection.find_one({"title": category.title})
-    if existing:
-        raise HTTPException(status_code=400, detail="Category already exists")
+    # existing = categories_collection.find_one({"title": category.title})
+    # if existing:
+    #     raise HTTPException(status_code=400, detail="Category already exists")
 
     category_result = await categories_collection.insert_one(category.model_dump())
     return CategoryResponse(

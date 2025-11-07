@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from controllers import home_controller, auth_controller, test_controller, user_controller, category_controller, \
-    event_controller, user_mangement_controller, geocoding_controller, climate_controller
+    event_controller, user_mangement_controller, geocoding_controller, climate_controller, region_controller
 from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI()
 
@@ -32,6 +32,8 @@ app.include_router(geocoding_controller.router, prefix=prefix)
 app.include_router(climate_controller.router, prefix=prefix)
 
 app.include_router(user_mangement_controller.router, prefix=prefix)
+
+app.include_router(region_controller.router, prefix=prefix)
 
 # Mount static files for uploaded images
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")

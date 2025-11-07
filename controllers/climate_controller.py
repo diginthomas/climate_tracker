@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import Optional
 import httpx
@@ -107,7 +109,8 @@ async def get_region_climate_data(
                     historical.append({
                         "year": year,
                         "temperature": round(avg_temp, 2) if avg_temp else None,
-                        "precipitation": round(total_precip, 2) if total_precip else None
+                        "precipitation": round(total_precip, 2) if total_precip else None,
+
                     })
                 
                 # Calculate overall statistics
@@ -118,6 +121,7 @@ async def get_region_climate_data(
                 total_precipitation = round(sum(all_precip), 2) if all_precip else None
                 
                 # Generate insights
+
                 insights = generate_climate_insights(historical, avg_temperature, total_precipitation)
                 
                 # Count events in this region
@@ -183,7 +187,8 @@ def get_mock_climate_data(region: str, region_data: dict):
         historical.append({
             "year": year,
             "temperature": round(random.uniform(8, 15), 2),
-            "precipitation": round(random.uniform(400, 800), 2)
+            "precipitation": round(random.uniform(400, 800), 2),
+            "wildfire" : round(random.uniform(1, 10), 2),
         })
     
     return {
@@ -264,3 +269,118 @@ async def get_city_climate_data(
     
     # Use the region endpoint logic but filter for city
     return await get_region_climate_data(region=region, current_user=current_user)
+
+    # 🔹 Fetch wildfire counts
+
+
+async def fetch_wildfire_counts(min_lat, min_lng, max_lat, max_lng, start_year):
+    url = (
+        "https://delivery.maps.gov.bc.ca/arcgis/rest/services/"
+        "whse/bcgw_pub_whse_land_and_natural_resource/MapServer/17/query"
+    )
+
+    params = {
+        "f": "json",
+        "where": f"FIRE_YEAR >= {start_year}",
+        "geometry": f"{min_lng},{min_lat},{max_lng},{max_lat}",
+        "geometryType": "esriGeometryEnvelope",
+        "inSR": "4326",
+        "spatialRel": "esriSpatialRelIntersects",
+        "outFields": "FIRE_YEAR",
+        "returnGeometry": "false",
+        "resultRecordCount": 1000,
+        "resultOffset": 0,
+    }
+
+    year_counts = defaultdict(int)
+
+    async with httpx.AsyncClient() as client:
+        while True:
+            response = await client.get(url, params=params)
+            if response.status_code != 200:
+                raise HTTPException(status_code=500, detail="Failed to fetch wildfire data")
+
+            data = response.json()
+            features = data.get("features", [])
+            if not features:
+                break
+
+            for f in features:
+                year = f.get("attributes", {}).get("FIRE_YEAR")
+                if year:
+                    year_counts[year] += 1
+
+            if "exceededTransferLimit" in data and data["exceededTransferLimit"]:
+                params["resultOffset"] += params["resultRecordCount"]
+            else:
+                break
+
+    return dict(sorted(year_counts.items()))
+
+    # 🔹 Calculate bounding box around a region
+
+
+def get_region_bbox(region_data, buffer_km=50):
+    """
+    Returns min_lat, min_lng, max_lat, max_lng covering the region.
+    Uses central coordinates only since city names don't have lat/lng yet.
+    """
+    if "coordinates" not in region_data or "lat" not in region_data["coordinates"] or "lng" not in region_data[
+        "coordinates"]:
+        raise ValueError("Invalid coordinates for region")
+
+    lat = region_data["coordinates"]["lat"]
+    lng = region_data["coordinates"]["lng"]
+
+    # buffer in degrees (~0.009 degrees per km)
+    delta = buffer_km * 0.009
+    min_lat = lat - delta
+    max_lat = lat + delta
+    min_lng = lng - delta
+    max_lng = lng + delta
+
+    return min_lat, min_lng, max_lat, max_lng
+
+
+@router.get("/wildfire")
+async def get_wildfire_climate_data(
+        region: str = Query(..., description="Region name in British Columbia"),
+        current_user: str = Depends(get_current_user)
+):
+    if region not in BC_REGIONS_DATA:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Region '{region}' not found. Available regions: {', '.join(BC_REGIONS_DATA.keys())}"
+        )
+
+    region_data = BC_REGIONS_DATA[region]
+    # Compute bounding box
+    try:
+        min_lat, min_lng, max_lat, max_lng = get_region_bbox(region_data, buffer_km=50)
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    start_year = datetime.now().year - 10
+    wildfire_counts = await fetch_wildfire_counts(min_lat, min_lng, max_lat, max_lng, start_year)
+
+    return {
+        "region": region,
+        "cities": region_data.get("cities", []),
+        "bounding_box": {
+            "min_lat": min_lat,
+            "min_lng": min_lng,
+            "max_lat": max_lat,
+            "max_lng": max_lng
+        },
+        "wildfire_counts_by_year": wildfire_counts
+    }
+
+@router.get("/wildfire/local")
+async def get_wildfire_local_climate_data( region: str = Query(..., description="Region name in British Columbia"),
+        current_user: str = Depends(get_current_user)):
+    if region not in BC_REGIONS_DATA:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Region '{region}' not found. Available regions: {', '.join(BC_REGIONS_DATA.keys())}"
+        )
+    
