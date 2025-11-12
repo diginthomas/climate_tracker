@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Query, Depends
-from typing import Optional
+from typing import Optional, Dict
 import httpx
 from datetime import datetime, timedelta
 from auth.auth_utils import get_current_user
@@ -643,10 +643,13 @@ async def get_city_climate_data(
     # Use the region endpoint logic but filter for city
     return await get_region_climate_data(region=region, current_user=current_user)
 
+@router.get("/region/all")
+def get_region_climate():
+    return list(REGION_ID.keys())
 
 @router.get("/events")
 async def get_events( region: str = Query(..., description="Region name in British Columbia"),
-    current_user: str = Depends(get_current_user)):
+ ):
     region_id = REGION_ID.get(region,"")
     if not region_id:
         raise HTTPException(
@@ -701,3 +704,59 @@ async def get_events( region: str = Query(..., description="Region name in Briti
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+#
+# @router.get("region/category") get events based on year
+# async def get_region_category(
+#     category_id: str = Query(..., description="Region name"),
+#     region: str = Query(..., description="Region name in British Columbia"),
+#     current_user: str = Depends(get_current_user)
+# ):
+#
+#
+#
+
+
+@router.get("/severity", response_model=Dict[str, int])
+async def get_severity_region(
+    region: str = Query(..., description="Region name in British Columbia"),
+
+):
+    """
+    Returns severity distribution for a given region.
+    Example response:
+    {
+        "Low": 2,
+        "Moderate": 5,
+        "High": 3,
+        "Severe": 0
+    }
+    """
+    # ✅ Map region name → internal region_id
+    region_id = REGION_ID.get(region)
+    if not region_id:
+        raise HTTPException(status_code=404, detail=f"Invalid region name: {region}")
+
+    try:
+        # ✅ MongoDB aggregation to count events by severity
+        pipeline = [
+            {"$match": {"region": region_id}},
+            {"$group": {"_id": "$severity", "count": {"$sum": 1}}},
+        ]
+
+        cursor = events_collection.aggregate(pipeline)
+        data = [doc async for doc in cursor]
+
+        # ✅ Ensure all severity levels are returned (even if zero)
+        severity_levels = ["Low", "Moderate", "High", "Severe"]
+        result = {level: 0 for level in severity_levels}
+
+        for item in data:
+            level = item.get("_id")
+            count = item.get("count", 0)
+            if level in result:
+                result[level] = count
+
+        return result
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
