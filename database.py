@@ -11,5 +11,6 @@ db = client["climate_db"]
 
 #tables
 users_collection = db["users"]
+profiles_collection = db["user_profiles"]
 categories_collection = db["categories"]
 events_collection = db["events"]
