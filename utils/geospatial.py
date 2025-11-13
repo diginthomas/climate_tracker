@@ -166,3 +166,4 @@ class GeoJSONRegionMapper:
         """Check if GeoJSON data was successfully loaded."""
         return len(self.features_by_region) > 0
 
+

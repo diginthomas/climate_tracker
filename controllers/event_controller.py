@@ -1,17 +1,15 @@
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, Query
 from bson import ObjectId
 from datetime import datetime
-import os, uuid
+import uuid
 from typing import Optional, List
 
 from database import events_collection, categories_collection
 from models.event import EventResponse
 from auth.auth_utils import get_current_user  # JWT auth dependency
+from utils.cloudinary_config import upload_image_to_cloudinary
 
 router = APIRouter(prefix="/event", tags=["event"])
-
-UPLOAD_DIR = "uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # -------------------
 # CREATE EVENT
@@ -34,14 +32,24 @@ async def add_event(
     images: List[UploadFile] = File([]),
     current_user: str = Depends(get_current_user)
 ):
-    # Upload images (max 5)
+    # Upload images to Cloudinary (max 5)
     image_urls = []
     for image in images[:5]:
-        filename = f"{uuid.uuid4()}_{image.filename}"
-        path = os.path.join(UPLOAD_DIR, filename)
-        with open(path, "wb") as f:
-            f.write(await image.read())
-        image_urls.append(f"/uploads/{filename}")
+        try:
+            # Read image data
+            image_data = await image.read()
+            
+            # Upload to Cloudinary
+            result = upload_image_to_cloudinary(
+                image_data=image_data,
+                folder="climate_events",
+                public_id=f"{uuid.uuid4()}"
+            )
+            image_urls.append(result['secure_url'])
+        except Exception as e:
+            # Cloudinary upload failed - skip this image
+            print(f"Cloudinary upload failed for {image.filename}: {e}")
+            # Image is skipped - not added to image_urls 
 
     event_doc = {
         "title": title,
@@ -147,13 +155,30 @@ async def update_event(
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
 
+    # Get existing image URLs (preserve existing URLs - Cloudinary or legacy local URLs)
     image_urls = event.get("image_urls", [])
+    
+    # Upload new images to Cloudinary (max 5 total)
     for image in images[:5]:
-        filename = f"{uuid.uuid4()}_{image.filename}"
-        path = os.path.join(UPLOAD_DIR, filename)
-        with open(path, "wb") as f:
-            f.write(await image.read())
-        image_urls.append(f"/uploads/{filename}")
+        if len(image_urls) >= 5:
+            break
+        try:
+            # Read image data
+            image_data = await image.read()
+            
+            # Upload to Cloudinary
+            result = upload_image_to_cloudinary(
+                image_data=image_data,
+                folder="climate_events",
+                public_id=f"{uuid.uuid4()}"
+            )
+            image_urls.append(result['secure_url'])
+        except Exception as e:
+            # Cloudinary upload failed - skip this image
+            print(f"Cloudinary upload failed for {image.filename}: {e}")
+            # Image is skipped - not added to image_urls
+    
+    # Limit to 5 images total
     image_urls = image_urls[:5]
 
     updated_doc = {
