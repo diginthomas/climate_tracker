@@ -31,7 +31,7 @@ async def all_categories():
 # ➕ Add category (🔒 protected)
 @router.post("/add", response_model=CategoryResponse,dependencies=[Depends(verify_admin)])
 async def add_category(category: Category):
-    existing = categories_collection.find_one({"title": category.title})
+    existing = await categories_collection.find_one({"title": category.title})
     if existing:
         raise HTTPException(status_code=400, detail="Category already exists")
 
@@ -47,7 +47,7 @@ async def add_category(category: Category):
 # 🔍 Get category by ID (anyone can view)
 @router.get("/{category_id}", response_model=CategoryResponse)
 async def get_category(category_id: str):
-    category = categories_collection.find_one({"_id": ObjectId(category_id)})
+    category = await categories_collection.find_one({"_id": ObjectId(category_id)})
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
 
@@ -62,11 +62,11 @@ async def get_category(category_id: str):
 # ✏️ Update category (🔒 protected)
 @router.put("/{category_id}", response_model=CategoryResponse,dependencies=[Depends(verify_admin)])
 async def update_category(category_id: str, updated_data: Category):
-    category = categories_collection.find_one({"_id": ObjectId(category_id)})
+    category = await categories_collection.find_one({"_id": ObjectId(category_id)})
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
 
-    categories_collection.update_one(
+    await categories_collection.update_one(
         {"_id": ObjectId(category_id)},
         {"$set": updated_data.model_dump()}
     )
@@ -82,11 +82,11 @@ async def update_category(category_id: str, updated_data: Category):
 # ❌ Soft delete category (🔒 protected)
 @router.delete("/{category_id}",dependencies=[Depends(verify_admin)])
 async def delete_category(category_id: str):
-    category = categories_collection.find_one({"_id": ObjectId(category_id)})
+    category = await categories_collection.find_one({"_id": ObjectId(category_id)})
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
 
-    categories_collection.update_one(
+    await categories_collection.update_one(
         {"_id": ObjectId(category_id)},
         {"$set": {"status": 2}}
     )
