@@ -31,7 +31,7 @@ async def get_non_admin_users():
 
 @router.patch("/", response_model=UserResponse, dependencies=[Depends(verify_admin)])
 async def patch_user(request: PatchUserRequest):
-    user = users_collection.find_one({"_id": ObjectId(request.user_id)})
+    user = await users_collection.find_one({"_id": ObjectId(request.user_id)})
 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -39,7 +39,7 @@ async def patch_user(request: PatchUserRequest):
     # Toggle boolean status
     new_status = not user.get("status", False)
 
-    users_collection.update_one(
+    await users_collection.update_one(
         {"_id": ObjectId(request.user_id)},
         {"$set": {"status": new_status}}
     )

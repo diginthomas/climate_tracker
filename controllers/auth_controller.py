@@ -139,7 +139,7 @@ async def update_password(data: dict):
             raise HTTPException(status_code=400, detail="Invalid token")
 
         hashed_password = pwd_context.hash(new_password)
-        users_collection.update_one({"email": email}, {"$set": {"password": hashed_password}})
+        await users_collection.update_one({"email": email}, {"$set": {"password_hash": hashed_password}})
         return {"message": "Password updated successfully"}
 
     except JWTError:
