@@ -11,26 +11,27 @@ from utils.cloudinary_config import upload_image_to_cloudinary
 
 router = APIRouter(prefix="/event", tags=["event"])
 
+
 # -------------------
 # CREATE EVENT
 # -------------------
 @router.post("/add", response_model=EventResponse)
 async def add_event(
-    title: str = Form(...),
-    description: str = Form(...),
-    category_id: str = Form(...),
-    date: str = Form(...),
-    location: str = Form(...),
-    impact_summary: str = Form(...),
-    contact_email: str = Form(...),
-    year: int = Form(...),
-    severity: str = Form(...),
-    region: str = Form(...),
-    type: str = Form(...),
-    source: Optional[str] = Form(None),
-    is_featured: Optional[bool] = Form(False),
-    images: List[UploadFile] = File([]),
-    current_user: str = Depends(get_current_user)
+        title: str = Form(...),
+        description: str = Form(...),
+        category_id: str = Form(...),
+        date: str = Form(...),
+        location: str = Form(...),
+        impact_summary: str = Form(...),
+        contact_email: str = Form(...),
+        year: int = Form(...),
+        severity: str = Form(...),
+        region: str = Form(...),
+        type: str = Form(...),
+        source: Optional[str] = Form(None),
+        is_featured: Optional[bool] = Form(False),
+        images: List[UploadFile] = File([]),
+        current_user: str = Depends(get_current_user)
 ):
     # Upload images to Cloudinary (max 5)
     image_urls = []
@@ -38,7 +39,7 @@ async def add_event(
         try:
             # Read image data
             image_data = await image.read()
-            
+
             # Upload to Cloudinary
             result = upload_image_to_cloudinary(
                 image_data=image_data,
@@ -84,14 +85,15 @@ async def add_event(
         **event_doc
     )
 
+
 # -------------------
 # GET ALL EVENTS
 # -------------------
 @router.get("/", response_model=List[EventResponse])
 async def all_events(
-    current_user: str = Depends(get_current_user),
-    category_id: Optional[str] = Query(None),
-    status: Optional[int] = Query(None)
+        current_user: str = Depends(get_current_user),
+        category_id: Optional[str] = Query(None),
+        status: Optional[int] = Query(None)
 ):
     query = {}
     if category_id:
@@ -111,6 +113,7 @@ async def all_events(
         ))
     return events
 
+
 # -------------------
 # GET SINGLE EVENT
 # -------------------
@@ -129,27 +132,28 @@ async def get_event(event_id: str, current_user: str = Depends(get_current_user)
         **event
     )
 
+
 # -------------------
 # UPDATE EVENT
 # -------------------
 @router.post("/{event_id}", response_model=EventResponse)
 async def update_event(
-    event_id: str,
-    title: str = Form(...),
-    description: str = Form(...),
-    category_id: str = Form(...),
-    date: str = Form(...),
-    location: str = Form(...),
-    impact_summary: str = Form(...),
-    contact_email: str = Form(...),
-    year: int = Form(...),
-    severity: str = Form(...),
-    region: str = Form(...),
-    type: str = Form(...),
-    source: Optional[str] = Form(None),
-    is_featured: Optional[bool] = Form(False),
-    images: List[UploadFile] = File([]),
-    current_user: str = Depends(get_current_user)
+        event_id: str,
+        title: str = Form(...),
+        description: str = Form(...),
+        category_id: str = Form(...),
+        date: str = Form(...),
+        location: str = Form(...),
+        impact_summary: str = Form(...),
+        contact_email: str = Form(...),
+        year: int = Form(...),
+        severity: str = Form(...),
+        region: str = Form(...),
+        type: str = Form(...),
+        source: Optional[str] = Form(None),
+        is_featured: Optional[bool] = Form(False),
+        images: List[UploadFile] = File([]),
+        current_user: str = Depends(get_current_user)
 ):
     event = await events_collection.find_one({"_id": ObjectId(event_id)})
     if not event:
@@ -157,7 +161,7 @@ async def update_event(
 
     # Get existing image URLs (preserve existing URLs - Cloudinary or legacy local URLs)
     image_urls = event.get("image_urls", [])
-    
+
     # Upload new images to Cloudinary (max 5 total)
     for image in images[:5]:
         if len(image_urls) >= 5:
@@ -165,7 +169,7 @@ async def update_event(
         try:
             # Read image data
             image_data = await image.read()
-            
+
             # Upload to Cloudinary
             result = upload_image_to_cloudinary(
                 image_data=image_data,
@@ -177,7 +181,7 @@ async def update_event(
             # Cloudinary upload failed - skip this image
             print(f"Cloudinary upload failed for {image.filename}: {e}")
             # Image is skipped - not added to image_urls
-    
+
     # Limit to 5 images total
     image_urls = image_urls[:5]
 
@@ -213,6 +217,7 @@ async def update_event(
         uploaded_at=event.get("uploaded_at", datetime.utcnow())
     )
 
+
 # -------------------
 # DELETE (SOFT DELETE)
 # -------------------
@@ -223,6 +228,7 @@ async def delete_event(event_id: str, current_user: str = Depends(get_current_us
         raise HTTPException(status_code=404, detail="Event not found")
     await events_collection.update_one({"_id": ObjectId(event_id)}, {"$set": {"status": 2}})
     return {"message": "Event deactivated successfully"}
+
 
 # -------------------
 # APPROVE EVENT
@@ -235,6 +241,7 @@ async def approve_event(event_id: str, current_user: str = Depends(get_current_u
 
     await events_collection.update_one({"_id": ObjectId(event_id)}, {"$set": {"status": 1}})
     return {"message": "Event approved successfully"}
+
 
 # ---------------------------
 # TOGGLE FEATURED STATUS
@@ -254,3 +261,40 @@ async def toggle_featured(
         {"$set": {"is_featured": is_featured}}
     )
     return {"message": f"Event {'featured' if is_featured else 'unfeatured'} successfully"}
+
+
+@router.get("/featured", response_model=List[EventResponse])
+async def featured_events():
+    pipeline = [
+        {"$match": {"is_featured": True, "status": 3}},
+        {"$sample": {"size": 3}}  # return 3 random documents
+    ]
+
+    events_cursor = await events_collection.aggregate(pipeline).to_list(length=3)
+
+    response = []
+    for event in events_cursor:
+        response.append(EventResponse(
+            event_id=str(event["_id"]),
+            title=event["title"],
+            description=event["description"],
+            category_id=event["category_id"],
+            category_name=event.get("category_name", ""),
+            date=event["date"],
+            uploaded_at=event["uploaded_at"],
+            uploaded_by=event["uploaded_by"],
+            uploaded_by_user=event["uploaded_by_user"],
+            location=event["location"],
+            impact_summary=event["impact_summary"],
+            contact_email=event["contact_email"],
+            year=event["year"],
+            severity=event["severity"],
+            region=event.get("region"),
+            type=event.get("type"),
+            source=event.get("source"),
+            is_featured=event.get("is_featured"),
+            status=event["status"],
+            image_urls=event.get("image_urls", [])
+        ))
+
+    return response
