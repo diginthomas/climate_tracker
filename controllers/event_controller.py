@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, Query
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, Query, Body
 from bson import ObjectId
 from datetime import datetime
 import uuid
@@ -242,7 +242,7 @@ async def approve_event(event_id: str, current_user: str = Depends(get_current_u
 @router.patch("/{event_id}/feature")
 async def toggle_featured(
     event_id: str,
-    is_featured: bool = True,
+    is_featured: bool = Body(..., embed=True),
     current_user: str = Depends(get_current_user)
 ):
     event = await events_collection.find_one({"_id": ObjectId(event_id)})
