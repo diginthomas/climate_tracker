@@ -1,16 +1,19 @@
-from http.client import HTTPException
 from datetime import datetime
 from bson import ObjectId
-from fastapi import APIRouter, Body
+from fastapi import APIRouter, Body, HTTPException, Query, Request
+from typing import Optional, List
 
 from database import contacts_collection
 from models.contact import ContactResponse, Contact
+from utils.pagination import get_pagination_params, create_paginated_response, PaginatedResponse
+from middleware.rate_limiter import limiter, RATE_LIMIT_CONTACT
 
 router = APIRouter(prefix="/contact", tags=["Contact"])
 
 
 @router.post("/", response_model=ContactResponse)
-async def create_contact(contact: Contact):
+@limiter.limit(RATE_LIMIT_CONTACT)
+async def create_contact(request: Request, contact: Contact):
     new_contact = contact.dict()
     new_contact["created_at"] = datetime.utcnow()
     new_contact["updated_at"] = datetime.utcnow()
@@ -24,10 +27,26 @@ async def create_contact(contact: Contact):
     )
 
 
-@router.get("/", response_model=list[ContactResponse])
-async def get_all_contacts():
+@router.get("/", response_model=PaginatedResponse[ContactResponse])
+async def get_all_contacts(
+    page: Optional[int] = Query(1, ge=1, description="Page number (1-indexed)"),
+    page_size: Optional[int] = Query(20, ge=1, le=100, description="Number of items per page (max 100)"),
+    status: Optional[str] = Query(None, description="Filter by status")
+):
+    # Build query
+    query = {"is_deleted": False}
+    if status:
+        query["status"] = status
+    
+    # Get pagination parameters
+    skip, limit = get_pagination_params(page, page_size)
+    
+    # Count total documents matching the query
+    total = await contacts_collection.count_documents(query)
+    
+    # Fetch contacts with pagination
     contacts = []
-    async for contact in contacts_collection.find({"is_deleted": False}):
+    async for contact in contacts_collection.find(query).skip(skip).limit(limit).sort("created_at", -1):
         contacts.append(ContactResponse(
             id=str(contact["_id"]),
             name=contact["name"],
@@ -39,7 +58,13 @@ async def get_all_contacts():
             updated_at=contact["updated_at"],
             is_deleted=contact["is_deleted"]
         ))
-    return contacts
+    
+    return create_paginated_response(
+        items=contacts,
+        total=total,
+        page=page or 1,
+        page_size=page_size or 20
+    )
 
 
 @router.get("/{contact_id}", response_model=ContactResponse)

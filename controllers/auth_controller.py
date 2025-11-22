@@ -1,16 +1,21 @@
 # controllers/auth_controller.py
 import os
 from datetime import datetime, timedelta
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Request
 from passlib.context import CryptContext
 from jose import jwt, JWTError
 from dotenv import load_dotenv
 from bson import ObjectId
-
 from email_helper import send_reset_email
 from models.password_request_email import PasswordResetRequest
 from models.user_model import UserRegister, UserLogin, UserResponse
 from database import users_collection
+from middleware.rate_limiter import (
+    limiter,
+    RATE_LIMIT_LOGIN,
+    RATE_LIMIT_REGISTER,
+    RATE_LIMIT_PASSWORD_RESET
+)
 
 load_dotenv()
 
@@ -57,7 +62,8 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
 # Routes
 # --------------------------------------------------------------------
 @router.post("/register", response_model=UserResponse)
-async def register(user: UserRegister):
+@limiter.limit(RATE_LIMIT_REGISTER)
+async def register(request: Request, user: UserRegister):
     """Register a new user."""
     # Ensure unique email
     existing = await users_collection.find_one({"email": user.email})
@@ -85,7 +91,8 @@ async def register(user: UserRegister):
     )
 
 @router.post("/login")
-async def login(user: UserLogin):
+@limiter.limit(RATE_LIMIT_LOGIN)
+async def login(request: Request, user: UserLogin):
     """Authenticate user and return JWT token."""
     db_user = await users_collection.find_one({"email": user.email})
     if not db_user:
@@ -111,7 +118,8 @@ async def login(user: UserLogin):
     }
 
 @router.post("/reset_password")
-async def reset_password(request: PasswordResetRequest):
+@limiter.limit(RATE_LIMIT_PASSWORD_RESET)
+async def reset_password(http_request: Request, request: PasswordResetRequest):
     user = await users_collection.find_one({"email": request.email})
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
