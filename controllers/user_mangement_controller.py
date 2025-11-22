@@ -9,7 +9,7 @@ from models.user_model import UserResponse, PatchUserRequest
 
 router = APIRouter(prefix="/user/manage", tags=["user_management"],)
 @router.get("/", response_model=List[UserResponse], dependencies=[Depends(verify_admin)])
-async def get_non_admin_users():
+async def get_non_admin_users() -> List[UserResponse]:
     # Fetch users asynchronously
     users = await users_collection.find({"role": {"$ne": "Admin"}}).to_list(length=None)
 
@@ -30,7 +30,7 @@ async def get_non_admin_users():
 
 
 @router.patch("/", response_model=UserResponse, dependencies=[Depends(verify_admin)])
-async def patch_user(request: PatchUserRequest):
+async def patch_user(request: PatchUserRequest) -> UserResponse:
     user = await users_collection.find_one({"_id": ObjectId(request.user_id)})
 
     if not user:

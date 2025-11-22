@@ -13,7 +13,7 @@ router = APIRouter(prefix="/contact", tags=["Contact"])
 
 @router.post("/", response_model=ContactResponse)
 @limiter.limit(RATE_LIMIT_CONTACT)
-async def create_contact(request: Request, contact: Contact):
+async def create_contact(request: Request, contact: Contact) -> ContactResponse:
     new_contact = contact.dict()
     new_contact["created_at"] = datetime.utcnow()
     new_contact["updated_at"] = datetime.utcnow()
@@ -32,7 +32,7 @@ async def get_all_contacts(
     page: Optional[int] = Query(1, ge=1, description="Page number (1-indexed)"),
     page_size: Optional[int] = Query(20, ge=1, le=100, description="Number of items per page (max 100)"),
     status: Optional[str] = Query(None, description="Filter by status")
-):
+) -> PaginatedResponse[ContactResponse]:
     # Build query
     query = {"is_deleted": False}
     if status:
@@ -68,7 +68,7 @@ async def get_all_contacts(
 
 
 @router.get("/{contact_id}", response_model=ContactResponse)
-async def get_single_contact(contact_id: str):
+async def get_single_contact(contact_id: str) -> ContactResponse:
     contact = await contacts_collection.find_one({"_id": ObjectId(contact_id)})
 
     if not contact:
@@ -91,7 +91,7 @@ async def get_single_contact(contact_id: str):
 async def update_contact_status(
     contact_id: str,
     data: dict = Body(...)
-):
+) -> ContactResponse:
     status = data.get("status")
 
     updated = await contacts_collection.find_one_and_update(
@@ -117,7 +117,7 @@ async def update_contact_status(
 
 
 @router.delete("/{contact_id}")
-async def delete_contact(contact_id: str):
+async def delete_contact(contact_id: str) -> dict[str, str]:
     deleted = await contacts_collection.find_one_and_update(
         {"_id": ObjectId(contact_id)},
         {"$set": {"is_deleted": True, "updated_at": datetime.utcnow()}}

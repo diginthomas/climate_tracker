@@ -59,8 +59,6 @@ async def add_event(
             image_urls.append(result['secure_url'])
         except Exception as e:
             # Cloudinary upload failed - skip this image
-            import logging
-            logger = logging.getLogger(__name__)
             logger.warning(f"Cloudinary upload failed for {image.filename}: {e}")
             # Image is skipped - not added to image_urls 
 
@@ -102,7 +100,7 @@ async def add_event(
         "date": datetime.fromisoformat(date),
         "uploaded_at": datetime.utcnow(),
         "uploaded_by": current_user,
-        "uploaded_by_user": current_user,
+        "uploaded_by_user": current_user,  # Keep for backward compatibility with frontend
         "location": location,
         "impact_summary": impact_summary,
         "contact_email": contact_email,
@@ -365,8 +363,6 @@ async def update_event(
             image_urls.append(result['secure_url'])
         except Exception as e:
             # Cloudinary upload failed - skip this image
-            import logging
-            logger = logging.getLogger(__name__)
             logger.warning(f"Cloudinary upload failed for {image.filename}: {e}")
             # Image is skipped - not added to image_urls
 
@@ -379,7 +375,7 @@ async def update_event(
         "category_id": category_id,
         "date": datetime.fromisoformat(date),
         "uploaded_by": current_user,
-        "uploaded_by_user": current_user,
+        "uploaded_by_user": current_user,  # Keep for backward compatibility with frontend
         "location": location,
         "impact_summary": impact_summary,
         "contact_email": contact_email,

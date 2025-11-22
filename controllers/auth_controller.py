@@ -22,9 +22,12 @@ load_dotenv()
 # --------------------------------------------------------------------
 # Environment configuration
 # --------------------------------------------------------------------
-SECRET_KEY = os.getenv("SECRET_KEY", "change_this_secret")
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY environment variable is not set. Please set it in your .env file.")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -63,7 +66,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
 # --------------------------------------------------------------------
 @router.post("/register", response_model=UserResponse)
 @limiter.limit(RATE_LIMIT_REGISTER)
-async def register(request: Request, user: UserRegister):
+async def register(request: Request, user: UserRegister) -> UserResponse:
     """Register a new user."""
     # Ensure unique email
     existing = await users_collection.find_one({"email": user.email})
@@ -92,7 +95,7 @@ async def register(request: Request, user: UserRegister):
 
 @router.post("/login")
 @limiter.limit(RATE_LIMIT_LOGIN)
-async def login(request: Request, user: UserLogin):
+async def login(request: Request, user: UserLogin) -> dict:
     """Authenticate user and return JWT token."""
     db_user = await users_collection.find_one({"email": user.email})
     if not db_user:
@@ -119,7 +122,7 @@ async def login(request: Request, user: UserLogin):
 
 @router.post("/reset_password")
 @limiter.limit(RATE_LIMIT_PASSWORD_RESET)
-async def reset_password(http_request: Request, request: PasswordResetRequest):
+async def reset_password(http_request: Request, request: PasswordResetRequest) -> dict:
     user = await users_collection.find_one({"email": request.email})
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
@@ -129,14 +132,14 @@ async def reset_password(http_request: Request, request: PasswordResetRequest):
     }
     reset_token = jwt.encode(token_data, SECRET_KEY, algorithm=ALGORITHM)
 
-    # Create reset link (example: frontend route)
-    reset_link = f"http://localhost:5173/reset-password?token={reset_token}"
+    # Create reset link using environment variable
+    reset_link = f"{FRONTEND_URL}/reset-password?token={reset_token}"
     await send_reset_email(request.email, reset_link)
     return {"message": "Password reset link sent to your email"}
 
 
 @router.post("/update_password")
-async def update_password(data: dict):
+async def update_password(data: dict) -> dict:
     token = data.get("token")
     new_password = data.get("new_password")
 
