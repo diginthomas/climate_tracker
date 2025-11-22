@@ -21,6 +21,8 @@ class Event(BaseModel):
     is_featured: Optional[bool] = None
     status: int= 3 #pending
     image_urls: Optional[List[str]] = []
+    lat: Optional[float] = None  # Latitude - validated against region
+    lng: Optional[float] = None  # Longitude - validated against region
 
 class EventResponse(BaseModel):
     event_id: str
@@ -43,3 +45,8 @@ class EventResponse(BaseModel):
     is_featured: Optional[bool] = None
     status: int
     image_urls: Optional[List[str]] =[]
+    lat: Optional[float] = None  # Latitude - validated against region
+    lng: Optional[float] = None  # Longitude - validated against region
+
+class FeatureToggleRequest(BaseModel):
+    is_featured: bool
