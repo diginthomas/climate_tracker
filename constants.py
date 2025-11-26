@@ -25,3 +25,4 @@ CACHE_STALE_TIME_DEFAULT = 300  # 5 minutes
 CACHE_STALE_TIME_CATEGORIES = 600  # 10 minutes (categories change rarely)
 CACHE_STALE_TIME_EVENTS = 120  # 2 minutes (events change more frequently)
 
+
