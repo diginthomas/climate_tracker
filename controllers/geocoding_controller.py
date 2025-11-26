@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import Optional
-import httpx
 from auth.auth_utils import get_current_user
+from utils.geocoding_helper import geocode_location_with_region
 
 router = APIRouter(prefix="/geocoding", tags=["geocoding"])
 
@@ -36,58 +36,27 @@ BC_CITIES_COORDS = {
 @router.get("/")
 async def geocode_location(
     location: str = Query(..., description="Location name to geocode"),
+    region: Optional[str] = Query(None, description="Selected region - coordinates will be adjusted to fall within this region"),
     current_user: str = Depends(get_current_user)
 ):
     """
     Geocode a location string to latitude and longitude coordinates.
-    First tries Nominatim API (OpenStreetMap), falls back to local database.
+    If a region is provided, validates and adjusts coordinates to fall within that region.
+    Region selection is highest priority - coordinates will be adjusted to match the region.
     """
-    location_lower = location.lower().strip()
-    
-    # Check local database first
-    for city, coords in BC_CITIES_COORDS.items():
-        if city in location_lower or location_lower in city:
-            return {
-                "location": location,
-                "lat": coords["lat"],
-                "lng": coords["lng"],
-                "source": "local_database"
-            }
-    
-    # Try Nominatim API (free, no key required)
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.get(
-                "https://nominatim.openstreetmap.org/search",
-                params={
-                    "q": f"{location}, British Columbia, Canada",
-                    "format": "json",
-                    "limit": 1
-                },
-                headers={
-                    "User-Agent": "ClimateTracker/1.0"  # Required by Nominatim
-                }
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                if data and len(data) > 0:
-                    result = data[0]
-                    return {
-                        "location": location,
-                        "lat": float(result["lat"]),
-                        "lng": float(result["lon"]),
-                        "source": "nominatim_api",
-                        "display_name": result.get("display_name", "")
-                    }
+        lat, lng, was_adjusted = await geocode_location_with_region(location, region)
+        
+        return {
+            "location": location,
+            "lat": lat,
+            "lng": lng,
+            "region": region,
+            "adjusted": was_adjusted,
+            "note": "Coordinates adjusted to match selected region" if was_adjusted else None
+        }
     except Exception as e:
-        print(f"Geocoding API error: {e}")
-    
-    # If all else fails, return BC center coordinates
-    return {
-        "location": location,
-        "lat": 53.7267,
-        "lng": -127.6476,
-        "source": "default_bc_center",
-        "note": "Could not geocode location, using BC center"
-    }
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Geocoding error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to geocode location: {str(e)}")

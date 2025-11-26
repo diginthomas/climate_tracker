@@ -1,25 +1,33 @@
 # controllers/auth_controller.py
 import os
 from datetime import datetime, timedelta
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Request
 from passlib.context import CryptContext
 from jose import jwt, JWTError
 from dotenv import load_dotenv
 from bson import ObjectId
-
 from email_helper import send_reset_email
 from models.password_request_email import PasswordResetRequest
 from models.user_model import UserRegister, UserLogin, UserResponse
 from database import users_collection
+from middleware.rate_limiter import (
+    limiter,
+    RATE_LIMIT_LOGIN,
+    RATE_LIMIT_REGISTER,
+    RATE_LIMIT_PASSWORD_RESET
+)
 
 load_dotenv()
 
 # --------------------------------------------------------------------
 # Environment configuration
 # --------------------------------------------------------------------
-SECRET_KEY = os.getenv("SECRET_KEY", "change_this_secret")
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY environment variable is not set. Please set it in your .env file.")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -57,7 +65,8 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
 # Routes
 # --------------------------------------------------------------------
 @router.post("/register", response_model=UserResponse)
-async def register(user: UserRegister):
+@limiter.limit(RATE_LIMIT_REGISTER)
+async def register(request: Request, user: UserRegister) -> UserResponse:
     """Register a new user."""
     # Ensure unique email
     existing = await users_collection.find_one({"email": user.email})
@@ -85,7 +94,8 @@ async def register(user: UserRegister):
     )
 
 @router.post("/login")
-async def login(user: UserLogin):
+@limiter.limit(RATE_LIMIT_LOGIN)
+async def login(request: Request, user: UserLogin) -> dict:
     """Authenticate user and return JWT token."""
     db_user = await users_collection.find_one({"email": user.email})
     if not db_user:
@@ -111,7 +121,8 @@ async def login(user: UserLogin):
     }
 
 @router.post("/reset_password")
-async def reset_password(request: PasswordResetRequest):
+@limiter.limit(RATE_LIMIT_PASSWORD_RESET)
+async def reset_password(http_request: Request, request: PasswordResetRequest) -> dict:
     user = await users_collection.find_one({"email": request.email})
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
@@ -121,14 +132,14 @@ async def reset_password(request: PasswordResetRequest):
     }
     reset_token = jwt.encode(token_data, SECRET_KEY, algorithm=ALGORITHM)
 
-    # Create reset link (example: frontend route)
-    reset_link = f"http://localhost:5173/reset-password?token={reset_token}"
+    # Create reset link using environment variable
+    reset_link = f"{FRONTEND_URL}/reset-password?token={reset_token}"
     await send_reset_email(request.email, reset_link)
     return {"message": "Password reset link sent to your email"}
 
 
 @router.post("/update_password")
-async def update_password(data: dict):
+async def update_password(data: dict) -> dict:
     token = data.get("token")
     new_password = data.get("new_password")
 

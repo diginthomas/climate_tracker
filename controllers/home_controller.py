@@ -15,36 +15,36 @@ def read_root():
 
 @router.get("/featured", response_model=List[EventResponse])
 async def featured_events():
+    # Use aggregation pipeline with $lookup to join categories (fixes N+1 query problem)
     pipeline = [
         {"$match": {"is_featured": True, "status": 1}},
-        {"$sample": {"size": 3}}  # return 3 random documents
+        {"$sample": {"size": 3}},  # return 3 random documents
+        {
+            "$lookup": {
+                "from": "categories",
+                "let": {"cat_id": {"$toObjectId": "$category_id"}},
+                "pipeline": [
+                    {"$match": {"$expr": {"$eq": ["$_id", "$$cat_id"]}}},
+                    {"$project": {"title": 1}}
+                ],
+                "as": "category_info"
+            }
+        },
+        {
+            "$addFields": {
+                "category_name": {
+                    "$ifNull": [{"$arrayElemAt": ["$category_info.title", 0]}, "Unknown"]
+                }
+            }
+        },
+        {"$project": {"category_info": 0}}  # Remove the temporary lookup field
     ]
 
     events_cursor = await events_collection.aggregate(pipeline).to_list(length=3)
 
     response = []
     for event in events_cursor:
-        response.append(EventResponse(
-            event_id=str(event["_id"]),
-            title=event["title"],
-            description=event["description"],
-            category_id=event["category_id"],
-            category_name=event.get("category_name", ""),
-            date=event["date"],
-            uploaded_at=event["uploaded_at"],
-            uploaded_by=event["uploaded_by"],
-            uploaded_by_user=event["uploaded_by_user"],
-            location=event["location"],
-            impact_summary=event["impact_summary"],
-            contact_email=event["contact_email"],
-            year=event["year"],
-            severity=event["severity"],
-            region=event.get("region"),
-            type=event.get("type"),
-            source=event.get("source"),
-            is_featured=event.get("is_featured"),
-            status=event["status"],
-            image_urls=event.get("image_urls", [])
-        ))
+        event["event_id"] = str(event["_id"])
+        response.append(EventResponse(**event))
 
     return response
